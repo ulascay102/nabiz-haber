@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, normalize, extname } from "node:path";
 import { sources } from "./config/sources.js";
 import { categories } from "./lib/categorize.js";
+import { getMarkets } from "./lib/markets.js"; // piyasa anlık (tek host: Yahoo) çekilir
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "public");
@@ -27,9 +28,8 @@ const REFRESH_MINUTES = process.env.REFRESH_MINUTES !== undefined ? parseInt(pro
 // siteye istek atmaz; yalnızca tek bir CDN adresiyle konuşur (ban/yavaşlama çözümü).
 const FEED_URL = (process.env.NABIZ_FEED_URL || "https://ulascay102.github.io/nabiz-haber").replace(/\/+$/, "");
 
-// Besleme dosyalarını (live.json, markets.json) kısa süre önbellekleyerek indir.
+// Canlı yayın listesini (live.json) kısa süre önbellekleyerek beslemeden indir.
 const liveCache = { t: 0, v: null };
-const mktCache = { t: 0, v: null };
 async function feedCached(name, cache, ttl, fallback) {
   if (cache.v && Date.now() - cache.t < ttl) return cache.v;
   try {
@@ -118,7 +118,8 @@ async function handleApi(path, params, res) {
   }
 
   if (path === "/api/markets") {
-    return sendJSON(res, await feedCached("markets.json", mktCache, 60000, []));
+    // Piyasa anlık: doğrudan Yahoo'dan (tek host, ~45 sn önbellekli) — ban riski yok.
+    return sendJSON(res, await getMarkets());
   }
 
   if (path === "/api/categories") {

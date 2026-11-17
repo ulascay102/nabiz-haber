@@ -5,7 +5,7 @@ name: Besleme (feed)
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # ~30 dakikada bir (GitHub gecikmeli çalıştırabilir)
+    - cron: "*/15 * * * *"   # ~15 dakikada bir (GitHub gecikmeli çalıştırabilir)
   workflow_dispatch:          # elle tetikleme
 
 permissions:
