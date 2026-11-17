@@ -1,0 +1,29 @@
+# Bağımlılıklar ve paketleme çıktıları (büyük, yeniden üretilebilir)
+node_modules/
+dist/
+build/
+
+# Üretilen / değişken veri
+public/articles.json
+data/social/*.json
+
+# Yerel ortam ve loglar
+*.log
+.env
+.DS_Store
+Thumbs.db
+
+# Editör/araç yapılandırması
+.claude/
+
+# Bu klasördeki Nabız Haber ile ilgisiz diğer projeler (bu depoya dahil değil)
+/GlowTournament/
+/old_physics/
+/src/
+/zomboid-modpack/
+/default.project.json
+/survivor.html
+/mal_ozer.ps1
+/mal_ozer.py
+/tools/rojo.exe
+/KURULUM.md
