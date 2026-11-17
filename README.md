@@ -5,6 +5,16 @@ yerel/genel × gündem/siyaset/savaş/spor/ekonomi/borsa/magazin olarak kategori
 canlı piyasa bandı, canlı YouTube yayınları ve son dakika bildirimleri içerir.
 Bağımsız bir masaüstü uygulaması (Electron) olarak paketlenebilir.
 
+## İndir ve çalıştır (Windows — kurulum yok)
+
+1. [**Releases**](https://github.com/ulascay102/nabiz-haber/releases/latest) sayfasına git.
+2. **Assets** altından **`NabizHaber.zip`**'i indir.
+3. Zip'e sağ tık → **Tümünü ayıkla**.
+4. Çıkan klasördeki **`NabizHaber.exe`**'ye çift tıkla.
+
+Node.js veya başka bir şey kurman gerekmez — her şey pakettedir.
+Windows "bilinmeyen yayıncı" uyarısı gösterirse: **Ek bilgi → Yine de çalıştır**.
+
 ## Özellikler
 
 - 40+ RSS kaynağından otomatik haber çekme (15 dk'da bir + elle "Yenile")
