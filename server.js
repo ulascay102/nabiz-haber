@@ -8,14 +8,11 @@
 //   GET /api/articles?scope=&topic=&category=&q=&source=&type=&limit=&offset=
 
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, normalize, extname } from "node:path";
 import { sources } from "./config/sources.js";
 import { categories } from "./lib/categorize.js";
-import { run } from "./fetch-news.js";
-import { getLive } from "./lib/live.js";
-import { getMarkets } from "./lib/markets.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "public");
@@ -25,6 +22,22 @@ const DATA = join(process.env.NABIZ_DATA_DIR || ROOT, "articles.json");
 const PORT = process.env.PORT || 4173;
 // Otomatik tazeleme aralığı (dakika). 0 veya negatif -> otomatik tazeleme kapalı.
 const REFRESH_MINUTES = process.env.REFRESH_MINUTES !== undefined ? parseInt(process.env.REFRESH_MINUTES, 10) : 15;
+// Haberler istemcide ÇEKİLMEZ: GitHub Actions'ın hazırlayıp GitHub Pages'te
+// yayınladığı tek besleme indirilir. Böylece kullanıcının IP'si onlarca Cloudflare'li
+// siteye istek atmaz; yalnızca tek bir CDN adresiyle konuşur (ban/yavaşlama çözümü).
+const FEED_URL = (process.env.NABIZ_FEED_URL || "https://ulascay102.github.io/nabiz-haber").replace(/\/+$/, "");
+
+// Besleme dosyalarını (live.json, markets.json) kısa süre önbellekleyerek indir.
+const liveCache = { t: 0, v: null };
+const mktCache = { t: 0, v: null };
+async function feedCached(name, cache, ttl, fallback) {
+  if (cache.v && Date.now() - cache.t < ttl) return cache.v;
+  try {
+    const res = await fetch(`${FEED_URL}/${name}`, { headers: { "user-agent": "NabizHaber" }, signal: AbortSignal.timeout(15000) });
+    if (res.ok) { cache.v = await res.json(); cache.t = Date.now(); }
+  } catch {}
+  return cache.v || fallback;
+}
 
 const TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -42,10 +55,18 @@ async function refresh() {
   if (refreshing) return null; // çakışmayı önle
   refreshing = true;
   try {
-    const r = await run({ quiet: true });
-    lastRefresh = r.generatedAt;
-    console.log(`[tazelendi] ${r.total} haber @ ${lastRefresh}`);
-    return r;
+    // Hazır beslemeyi (tek dosya) GitHub Pages CDN'den indir.
+    const res = await fetch(`${FEED_URL}/articles.json`, {
+      headers: { "user-agent": "NabizHaber" },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const payload = await res.json();
+    if (!payload || !Array.isArray(payload.articles)) throw new Error("geçersiz besleme");
+    await writeFile(DATA, JSON.stringify(payload), "utf8");
+    lastRefresh = payload.generatedAt;
+    console.log(`[tazelendi] ${payload.total} haber @ ${lastRefresh}`);
+    return { total: payload.total, generatedAt: payload.generatedAt };
   } catch (e) {
     console.warn(`[tazeleme hatası] ${e.message}`);
     return null;
@@ -93,11 +114,11 @@ async function handleApi(path, params, res) {
   }
 
   if (path === "/api/live") {
-    return sendJSON(res, await getLive());
+    return sendJSON(res, await feedCached("live.json", liveCache, 300000, []));
   }
 
   if (path === "/api/markets") {
-    return sendJSON(res, await getMarkets());
+    return sendJSON(res, await feedCached("markets.json", mktCache, 60000, []));
   }
 
   if (path === "/api/categories") {
@@ -161,12 +182,8 @@ createServer(async (req, res) => {
   console.log(`Nabız Haber: http://localhost:${PORT}`);
   console.log(`API:         http://localhost:${PORT}/api/articles`);
 
-  // Açılışta veri yoksa bir kez çek; sonra periyodik tazele.
-  const data = await loadData();
-  if (!data.generatedAt) {
-    console.log("İlk veri yok, çekiliyor...");
-    await refresh();
-  }
+  // Açılışta en güncel beslemeyi indir (başarısız olursa tohum veri gösterilir).
+  await refresh();
   if (REFRESH_MINUTES > 0) {
     console.log(`Otomatik tazeleme: her ${REFRESH_MINUTES} dakikada bir.`);
     setInterval(refresh, REFRESH_MINUTES * 60 * 1000);

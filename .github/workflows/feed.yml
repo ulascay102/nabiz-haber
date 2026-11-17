@@ -1,0 +1,42 @@
+name: Besleme (feed)
+
+# Haberleri GitHub'ın sunucuları çeker (kullanıcıların IP'si değil) ve sonucu
+# GitHub Pages üzerinden yayınlar. Uygulama yalnızca bu hazır dosyaları indirir.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # ~30 dakikada bir (GitHub gecikmeli çalıştırabilir)
+  workflow_dispatch:          # elle tetikleme
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: feed
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Besleme dosyalarını üret
+        run: node tools/build-feed.js
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

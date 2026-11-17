@@ -6,6 +6,7 @@ build/
 # Üretilen / değişken veri
 public/articles.json
 data/social/*.json
+_site/
 
 # Yerel ortam ve loglar
 *.log
